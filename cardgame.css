@@ -55,6 +55,65 @@
 .cg-rank-money { flex: 0 0 auto; color: #ffd45e; font-variant-numeric: tabular-nums; }
 .cg-rank-item.mine .cg-rank-money { color: #d6ff8f; }
 
+/* ───────── 모바일 방향 컨트롤: 상하좌우 삼각형 DPAD (밑변 긴) ─────────
+   nipplejs 조이스틱 대체. .btn[data-key] 라 mobile_input.js bindButton 자동 부착
+   (touchstart→keydown, touchend→keyup) → 홀드 시 키 down 유지 → 베팅 연속/가속. */
+#mobile-input .cg-dpad {
+  position: absolute;
+  left: 18px; bottom: 20px;
+  width: 140px; height: 140px;
+  background: none;
+  pointer-events: none;   /* 빈 칸은 통과, 버튼만 auto */
+}
+/* 일반 게임패드 방향키: 원형 버튼 + 안쪽 방향 삼각형.
+   #mobile-input prefix(1,3,0) 로 mobile_input.css `.actions .btn`(1,2,0) override. */
+#mobile-input .cg-dpad .cg-tri {
+  position: absolute;
+  pointer-events: auto;
+  width: 56px; height: 56px;
+  padding: 0; margin: 0;
+  border: 2px solid rgba(200, 200, 220, 0.55);
+  border-radius: 50%;             /* 원형 */
+  background: rgba(40, 40, 60, 0.55);
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.08s, transform 0.05s;
+}
+/* 십자 배치 (원 56px, 컨테이너 140 → 틈 ~28px, 약간만 띄움) */
+#mobile-input .cg-dpad .cg-up    { left: 42px; top: 0;    }
+#mobile-input .cg-dpad .cg-down  { left: 42px; top: 84px; }
+#mobile-input .cg-dpad .cg-left  { left: 0;    top: 42px; }
+#mobile-input .cg-dpad .cg-right { left: 84px; top: 42px; }
+
+/* 원 안쪽 방향 삼각형 (CSS border 기법, margin:auto 로 중앙). 밑변 길고 높이 낮음. */
+#mobile-input .cg-dpad .cg-tri::before {
+  content: '';
+  position: absolute; inset: 0; margin: auto;
+  width: 0; height: 0;
+}
+#mobile-input .cg-dpad .cg-up::before {
+  border-left: 12px solid transparent; border-right: 12px solid transparent;
+  border-bottom: 15px solid rgba(235, 240, 255, 0.92);
+}
+#mobile-input .cg-dpad .cg-down::before {
+  border-left: 12px solid transparent; border-right: 12px solid transparent;
+  border-top: 15px solid rgba(235, 240, 255, 0.92);
+}
+#mobile-input .cg-dpad .cg-left::before {
+  border-top: 12px solid transparent; border-bottom: 12px solid transparent;
+  border-right: 15px solid rgba(235, 240, 255, 0.92);
+}
+#mobile-input .cg-dpad .cg-right::before {
+  border-top: 12px solid transparent; border-bottom: 12px solid transparent;
+  border-left: 15px solid rgba(235, 240, 255, 0.92);
+}
+/* 눌림 강조 (bindButton 이 .pressed 토글) */
+#mobile-input .cg-dpad .cg-tri.pressed,
+#mobile-input .cg-dpad .cg-tri:active {
+  background: rgba(120, 160, 220, 0.85);
+  transform: scale(0.92);
+}
+
 /* 닫혔을 때 다시 열기 버튼 (우상단 작은 🏆) */
 #cg-rank-open {
   position: fixed; top: 8px; right: 8px; z-index: 60;

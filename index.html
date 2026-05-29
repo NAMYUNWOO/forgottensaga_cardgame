@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
   <head>
-    <script src="coi-serviceworker.js?v=20260529160634"></script>
+    <script src="coi-serviceworker.js?v=20260529200235"></script>
     <meta charset="utf-8">
     <!-- Cache 차단 — 새 deploy 즉시 사용자에게 fresh HTML 전달.
          CDN max-age 600s 의존 X. 매 진입 시 fresh fetch → 새 ?v= cache busting hash
@@ -13,11 +13,11 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <title>포가튼사가 카드게임</title>
-    <link rel="icon" type="image/png" href="favicon.png?v=20260529160634">
-    <link rel="stylesheet" type="text/css" href="theme/love.css?v=20260529160634">
-    <link rel="stylesheet" type="text/css" href="mobile_input.css?v=20260529160634">
-    <link rel="stylesheet" type="text/css" href="save_controls.css?v=20260529160634">
-    <link rel="stylesheet" type="text/css" href="cardgame.css?v=20260529160634">
+    <link rel="icon" type="image/png" href="favicon.png?v=20260529200235">
+    <link rel="stylesheet" type="text/css" href="theme/love.css?v=20260529200235">
+    <link rel="stylesheet" type="text/css" href="mobile_input.css?v=20260529200235">
+    <link rel="stylesheet" type="text/css" href="save_controls.css?v=20260529200235">
+    <link rel="stylesheet" type="text/css" href="cardgame.css?v=20260529200235">
     <style>
       html, body {
         margin: 0; padding: 0;
@@ -270,14 +270,17 @@
 
       <!-- 모바일 가상 키패드 (touch 디바이스에서만 표시, CSS 분기) -->
       <div id="mobile-input">
-        <!-- 좌하단 조이스틱: nipplejs 가 자체 base/knob element 추가 (zone 으로 사용). -->
-        <div class="joystick" id="joystick"></div>
+        <!-- 좌하단 삼각형 DPAD (밑변 긴 삼각형). .actions .btn[data-key] 라
+             mobile_input.js install() 의 bindButton 이 자동 부착(홀드=키다운 유지). -->
+        <div class="actions cg-dpad">
+          <button class="btn cg-tri cg-up"    data-key="up"    aria-label="위"></button>
+          <button class="btn cg-tri cg-left"  data-key="left"  aria-label="왼쪽"></button>
+          <button class="btn cg-tri cg-right" data-key="right" aria-label="오른쪽"></button>
+          <button class="btn cg-tri cg-down"  data-key="down"  aria-label="아래"></button>
+        </div>
 
-        <!-- 우하단 액션: esc 위, space-enter 좌우. -->
+        <!-- 우하단 액션: space / enter (확정). -->
         <div class="actions">
-          <div class="row top">
-            <button class="btn esc" data-key="esc">esc</button>
-          </div>
           <div class="row bottom">
             <button class="btn space" data-key="space">space</button>
             <button class="btn enter" data-key="enter">enter</button>
@@ -898,8 +901,8 @@
 
       var applicationLoad = function(e) { Love(Module); };
     </script>
-    <script type="text/javascript" src="nipplejs.min.js?v=20260529160634"></script>
-    <script type="text/javascript" src="mobile_input.js?v=20260529160634"></script>
+    <!-- nipplejs 제거: 카드게임은 삼각형 DPAD 사용 (#joystick 없으면 installJoystick no-op) -->
+    <script type="text/javascript" src="mobile_input.js?v=20260529200235"></script>
     <script type="text/javascript">
       // 비-Chromium 브라우저 안내. UA 검사: Chrome/CriOS 면 OK, Edg/OPR/SamsungBrowser
       // 같은 Chromium 변형도 OK 처리 (love.js 호환성 비슷). Firefox/Safari/iOS Safari 만 안내.
@@ -919,11 +922,11 @@
         } catch (e) {}
       })();
     </script>
-    <script type="text/javascript" src="save_controls.js?v=20260529160634"></script>
+    <script type="text/javascript" src="save_controls.js?v=20260529200235"></script>
     <!-- [CARD] Firebase 랭킹/머니 + 사용자 모달. love.js 보다 먼저 로드되어
          window.__moneyReady(Promise) 를 미리 생성 → preRunInjectMoney 가 대기. -->
-    <script type="text/javascript" src="firebase.js?v=20260529160634"></script>
-    <script type="text/javascript" src="game.js?v=20260529160634"></script>
-    <script async type="text/javascript" src="love.js?v=20260529160634" onload="applicationLoad(this)"></script>
+    <script type="text/javascript" src="firebase.js?v=20260529200235"></script>
+    <script type="text/javascript" src="game.js?v=20260529200235"></script>
+    <script async type="text/javascript" src="love.js?v=20260529200235" onload="applicationLoad(this)"></script>
   </body>
 </html>
