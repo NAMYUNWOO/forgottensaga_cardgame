@@ -1,0 +1,286 @@
+/* Save 다운로드/업로드 패널 (love.js IDBFS) */
+
+#save-panel {
+    position: fixed;
+    top: 0; right: 0;
+    width: min(380px, 100vw);
+    max-height: 100vh;
+    overflow-y: auto;
+    background: rgba(20, 20, 30, 0.95);
+    color: #f0f0f0;
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+    border-left: 2px solid rgba(200, 200, 220, 0.3);
+    padding: 16px;
+    z-index: 200;
+    transition: transform 0.25s ease-out;
+    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.4);
+}
+#save-panel.hidden { transform: translateX(100%); }
+
+/* === 탭 nav (3 버튼) === */
+#save-panel .tab-nav {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid rgba(150, 150, 170, 0.25);
+    padding-bottom: 0;
+}
+#save-panel .tab-btn {
+    flex: 1;
+    background: rgba(50, 50, 65, 0.5);
+    color: #bbb;
+    border: 1px solid rgba(150, 150, 170, 0.25);
+    border-bottom: 0;
+    padding: 7px 4px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 6px 6px 0 0;
+    transition: background 0.15s, color 0.15s;
+    font-family: inherit;
+    white-space: nowrap;
+    min-width: 0;
+}
+#save-panel .tab-btn:hover {
+    background: rgba(80, 80, 110, 0.6);
+    color: #ddd;
+}
+#save-panel .tab-btn.tab-active {
+    background: rgba(120, 160, 220, 0.6);
+    color: #fff;
+    border-color: rgba(255, 213, 102, 0.7);
+}
+
+/* === 탭 pane === */
+#save-panel .tab-pane {
+    display: none;
+}
+#save-panel .tab-pane.tab-active {
+    display: block;
+}
+#save-panel .hint {
+    font-size: 11px;
+    color: #888;
+    margin-top: 14px;
+    line-height: 1.5;
+}
+
+/* === 개발자로그 탭 === */
+#save-panel .log-toolbar {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+#save-panel .log-toolbar button {
+    background: rgba(80, 110, 160, 0.5);
+    color: #fff;
+    border: 1px solid rgba(150, 180, 220, 0.4);
+    padding: 4px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 11px;
+    font-family: inherit;
+}
+#save-panel .log-toolbar button:hover {
+    background: rgba(120, 160, 220, 0.7);
+}
+#save-panel #log-count {
+    font-size: 11px;
+    color: #888;
+    margin-left: auto;
+}
+#save-panel #log-output {
+    background: rgba(10, 10, 16, 0.8);
+    border: 1px solid rgba(80, 80, 100, 0.4);
+    border-radius: 6px;
+    padding: 10px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 10px;
+    line-height: 1.4;
+    color: #c8d0e0;
+    max-height: 60vh;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin: 0;
+}
+
+/* === 개발자노트 탭 === */
+#save-panel .notes-content {
+    font-size: 12px;
+    line-height: 1.6;
+    color: #ddd;
+}
+#save-panel .notes-content h3 {
+    margin: 0 0 2px;
+    font-size: 14px;
+    color: #ffd566;
+    font-weight: 600;
+}
+#save-panel .notes-content .notes-sub {
+    margin: 0 0 14px;
+    font-size: 11px;
+    color: #888;
+}
+#save-panel .notes-content h4 {
+    margin: 14px 0 4px;
+    font-size: 12px;
+    color: #cce0ff;
+    font-weight: 600;
+}
+#save-panel .notes-content p {
+    margin: 6px 0;
+}
+#save-panel .notes-content ul {
+    margin: 4px 0 8px;
+    padding-left: 20px;
+}
+#save-panel .notes-content li {
+    margin: 3px 0;
+    font-size: 11px;
+    color: #ccc;
+    line-height: 1.5;
+}
+#save-panel .notes-content strong { color: #ffd566; }
+#save-panel .notes-content .notes-contact {
+    margin-top: 14px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(150, 150, 170, 0.25);
+    font-size: 11px;
+    color: #aaa;
+}
+#save-panel .notes-content a {
+    color: #80c8ff;
+    text-decoration: none;
+}
+#save-panel .notes-content a:hover {
+    text-decoration: underline;
+}
+
+/* === DMCA 탭 === */
+#save-panel .dmca-content {
+    font-size: 12px;
+    line-height: 1.6;
+    color: #ddd;
+}
+#save-panel .dmca-content h3 {
+    margin: 0 0 2px;
+    font-size: 14px;
+    color: #ffd566;
+    font-weight: 600;
+}
+#save-panel .dmca-content .dmca-sub {
+    margin: 0 0 12px;
+    font-size: 11px;
+    color: #888;
+}
+#save-panel .dmca-content p {
+    margin: 8px 0;
+}
+#save-panel .dmca-content code {
+    background: rgba(60, 60, 80, 0.6);
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 10px;
+    color: #cce0ff;
+}
+#save-panel .dmca-content strong { color: #ffd566; }
+#save-panel .dmca-content .dmca-contact {
+    margin-top: 14px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(150, 150, 170, 0.25);
+    font-size: 11px;
+    color: #aaa;
+}
+#save-panel .dmca-content a {
+    color: #80c8ff;
+    text-decoration: none;
+}
+#save-panel .dmca-content a:hover {
+    text-decoration: underline;
+}
+
+#save-panel h2 {
+    margin: 0 0 12px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #ffd566;
+}
+#save-panel .close-btn {
+    position: absolute;
+    top: 12px; right: 12px;
+    background: none; border: 0;
+    color: #aaa;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+#save-panel .slot {
+    background: rgba(60, 60, 80, 0.4);
+    border: 1px solid rgba(150, 150, 170, 0.3);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+}
+#save-panel .slot-title {
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #cce0ff;
+    display: flex; justify-content: space-between; align-items: baseline;
+}
+#save-panel .slot-meta {
+    font-size: 11px;
+    color: #aaa;
+    margin-bottom: 8px;
+    word-break: break-all;
+}
+#save-panel .slot-actions {
+    display: flex; gap: 8px;
+}
+#save-panel .slot-actions button,
+#save-panel .slot-actions label {
+    flex: 1;
+    background: rgba(100, 130, 180, 0.5);
+    color: #fff;
+    border: 1px solid rgba(150, 180, 220, 0.4);
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    text-align: center;
+    transition: background 0.15s;
+}
+#save-panel .slot-actions button:hover,
+#save-panel .slot-actions label:hover {
+    background: rgba(120, 160, 220, 0.7);
+}
+#save-panel .slot-actions button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+#save-panel .slot-actions input[type="file"] {
+    display: none;
+}
+#save-panel .slot-actions .delete {
+    flex: 0 0 auto;
+    background: rgba(160, 80, 80, 0.5);
+    border-color: rgba(200, 100, 100, 0.4);
+}
+
+/* save-panel-toggle 의 styling 은 .top-right .btn (mobile_input.css) 으로 이전.
+ * 구버전 ID 호환만 위해 hidden — 새 빌드는 #btn-save 사용. */
+#save-panel-toggle { display: none; }
+
+#save-status {
+    margin-top: 12px;
+    padding: 8px;
+    background: rgba(40, 40, 50, 0.6);
+    border-radius: 6px;
+    font-size: 11px;
+    color: #aaa;
+    min-height: 16px;
+}
+#save-status.success { color: #80ff80; }
+#save-status.error   { color: #ff8080; }
