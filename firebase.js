@@ -149,8 +149,25 @@
     startRankingPoll();
   }
 
+  // ───────────── 랭킹 패널 토글 (X 닫기 / 🏆 열기) ─────────────
+  function setupRankingToggle() {
+    var panel = document.getElementById('cg-ranking');
+    var closeBtn = document.getElementById('cg-rank-close');
+    var openBtn = document.getElementById('cg-rank-open');
+    if (!panel) return;
+    if (closeBtn) closeBtn.addEventListener('click', function () {
+      panel.classList.add('hidden');
+      if (openBtn) openBtn.classList.remove('hidden');
+    });
+    if (openBtn) openBtn.addEventListener('click', function () {
+      panel.classList.remove('hidden');
+      openBtn.classList.add('hidden');
+    });
+  }
+
   // ───────────── 부트 ─────────────
   function boot() {
+    setupRankingToggle();
     idbGet(IDB_KEY).then(function (pid) {
       if (pid) {
         playerId = pid;

@@ -1,65 +1,69 @@
 /* cardgame/web/cardgame.css — 사용자 등록 모달 + 실시간 랭킹 패널 */
 
-/* ───────── 레이아웃: 데스크탑 = 캔버스 + 우측 랭킹 사이드바 ───────── */
-.cg-layout {
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  gap: 0;
-}
-.cg-layout .game-wrap { flex: 1 1 auto; min-width: 0; }
+/* ───────── 레이아웃: 캔버스는 원래대로 중앙, 랭킹은 우상단 floating ───────── */
+.cg-layout { display: contents; }   /* 레이아웃에 영향 X — 캔버스 중앙 정렬 유지 */
 
+/* 랭킹: 우상단 반투명 floating 오버레이 (데스크탑/모바일 공통) */
 #cg-ranking {
-  flex: 0 0 240px;
-  max-width: 240px;
-  background: #14181f;
-  color: #e6e8ec;
-  border-left: 2px solid #2a3242;
+  position: fixed;
+  top: 8px; right: 8px;
+  z-index: 60;
+  width: 200px;
+  max-width: 46vw;
+  max-height: 70vh;
   display: flex;
   flex-direction: column;
+  background: rgba(15, 19, 26, 0.55);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  border: 1px solid rgba(255, 212, 94, 0.35);
+  border-radius: 8px;
+  color: #e6e8ec;
   font-family: "NeoDunggeunmoPro", system-ui, sans-serif;
   overflow: hidden;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.4);
 }
+#cg-ranking.hidden { display: none; }
 .cg-rank-head {
-  padding: 10px 12px;
-  border-bottom: 1px solid #2a3242;
-  background: #1b212b;
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 8px 7px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
 }
-.cg-rank-title { font-size: 15px; font-weight: bold; color: #ffd45e; }
-.cg-me { font-size: 12px; margin-top: 4px; color: #8fd6ff; word-break: break-all; }
+.cg-rank-title { font-size: 14px; font-weight: bold; color: #ffd45e; flex: 0 0 auto; }
+.cg-me {
+  flex: 1 1 auto; font-size: 11px; color: #8fd6ff;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cg-rank-close {
+  flex: 0 0 auto; width: 22px; height: 22px; line-height: 20px;
+  padding: 0; border: none; border-radius: 4px; cursor: pointer;
+  background: rgba(255,255,255,0.08); color: #e6e8ec; font-size: 13px;
+}
+.cg-rank-close:hover { background: rgba(255,255,255,0.18); }
 .cg-rank-list {
   list-style: none; margin: 0; padding: 4px 0;
   overflow-y: auto; flex: 1 1 auto;
 }
 .cg-rank-item {
   display: flex; align-items: center;
-  padding: 4px 10px; font-size: 13px; gap: 6px;
-  border-bottom: 1px solid #1f2530;
+  padding: 3px 10px; font-size: 12px; gap: 6px;
 }
-.cg-rank-item.mine { background: #2d3a26; color: #c8f5a0; }
-.cg-rank-no { flex: 0 0 24px; text-align: right; color: #9aa3b2; }
+.cg-rank-item.mine { background: rgba(120, 200, 90, 0.22); color: #c8f5a0; }
+.cg-rank-no { flex: 0 0 20px; text-align: right; color: #9aa3b2; }
 .cg-rank-item.mine .cg-rank-no { color: #c8f5a0; }
 .cg-rank-name { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cg-rank-money { flex: 0 0 auto; color: #ffd45e; font-variant-numeric: tabular-nums; }
 .cg-rank-item.mine .cg-rank-money { color: #d6ff8f; }
 
-/* ───────── 모바일: 랭킹을 상단 접이식 반투명 오버레이로 ───────── */
-@media (max-width: 1024px), (pointer: coarse) {
-  .cg-layout { flex-direction: column; }
-  #cg-ranking {
-    position: fixed; top: 0; left: 0; right: 0;
-    flex: none; max-width: none;
-    max-height: 38vh;
-    border-left: none; border-bottom: 2px solid #2a3242;
-    background: rgba(20, 24, 31, 0.92);
-    z-index: 50;
-    /* 기본 접힘: 헤더만 보이게 */
-  }
-  .cg-rank-list { max-height: 30vh; }
+/* 닫혔을 때 다시 열기 버튼 (우상단 작은 🏆) */
+#cg-rank-open {
+  position: fixed; top: 8px; right: 8px; z-index: 60;
+  width: 34px; height: 30px; padding: 0;
+  border: 1px solid rgba(255,212,94,0.35); border-radius: 8px; cursor: pointer;
+  background: rgba(15,19,26,0.55); color: #ffd45e; font-size: 15px;
+  backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
 }
+#cg-rank-open.hidden { display: none; }
 
 /* ───────── 사용자 등록 모달 ───────── */
 #cg-name-modal {
