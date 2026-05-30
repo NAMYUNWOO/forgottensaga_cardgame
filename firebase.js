@@ -153,6 +153,9 @@
     var ok = document.getElementById('cg-name-ok');
     var msg = document.getElementById('cg-name-msg');
     if (!modal) { finishNewUser('Player'); return; }
+    // 게임 부팅 게이트: 이름 입력 완료(또는 등록 성공) 전까지 preRunInjectMoney 의
+    // 안전 타임아웃이 player_money 의존성을 풀지 않게 한다(이름 없이 시작 방지).
+    window.__cardAwaitingName = true;
     modal.classList.remove('hidden');
     setTimeout(function () { try { input.focus(); } catch (e) {} }, 100);
 
@@ -177,12 +180,14 @@
   }
 
   function finishNewUser(name) {
+    window.__cardAwaitingName = false;   // 부팅 게이트 해제
     playerName = name || playerName || 'Player';
     myMoney = DEFAULT_MONEY; lastPutMoney = DEFAULT_MONEY;
     _resolveMoney(DEFAULT_MONEY);
     startRankingPoll();
   }
   function finishReturning(money) {
+    window.__cardAwaitingName = false;   // 부팅 게이트 해제
     myMoney = (money != null && money >= 0) ? money : DEFAULT_MONEY;
     lastPutMoney = myMoney;
     _resolveMoney(myMoney);
@@ -215,11 +220,11 @@
       }
       playerId = auth.uid;
       getJson('/users/' + auth.uid).then(function (u) {
-        if (u && typeof u.money === 'number') {     // 복귀 사용자
-          playerName = u.name || 'Player';
+        if (u && typeof u.money === 'number' && u.name) {  // 복귀 사용자(이름 있음)
+          playerName = u.name;
           myWins = u.wins || 0; myLosses = u.losses || 0;
           finishReturning(u.money);
-        } else {                                    // 새 익명 사용자 → 이름 등록
+        } else {                                    // 새 사용자/이름없는 부분레코드 → 이름 등록
           showModal();
         }
       });
