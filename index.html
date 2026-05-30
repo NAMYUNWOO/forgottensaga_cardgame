@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
   <head>
-    <script src="coi-serviceworker.js?v=20260529202955"></script>
+    <script src="coi-serviceworker.js?v=20260530105601"></script>
     <meta charset="utf-8">
     <!-- Cache 차단 — 새 deploy 즉시 사용자에게 fresh HTML 전달.
          CDN max-age 600s 의존 X. 매 진입 시 fresh fetch → 새 ?v= cache busting hash
@@ -13,11 +13,11 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <title>포가튼사가 카드게임</title>
-    <link rel="icon" type="image/png" href="favicon.png?v=20260529202955">
-    <link rel="stylesheet" type="text/css" href="theme/love.css?v=20260529202955">
-    <link rel="stylesheet" type="text/css" href="mobile_input.css?v=20260529202955">
-    <link rel="stylesheet" type="text/css" href="save_controls.css?v=20260529202955">
-    <link rel="stylesheet" type="text/css" href="cardgame.css?v=20260529202955">
+    <link rel="icon" type="image/png" href="favicon.png?v=20260530105601">
+    <link rel="stylesheet" type="text/css" href="theme/love.css?v=20260530105601">
+    <link rel="stylesheet" type="text/css" href="mobile_input.css?v=20260530105601">
+    <link rel="stylesheet" type="text/css" href="save_controls.css?v=20260530105601">
+    <link rel="stylesheet" type="text/css" href="cardgame.css?v=20260530105601">
     <style>
       html, body {
         margin: 0; padding: 0;
@@ -902,7 +902,7 @@
       var applicationLoad = function(e) { Love(Module); };
     </script>
     <!-- nipplejs 제거: 카드게임은 삼각형 DPAD 사용 (#joystick 없으면 installJoystick no-op) -->
-    <script type="text/javascript" src="mobile_input.js?v=20260529202955"></script>
+    <script type="text/javascript" src="mobile_input.js?v=20260530105601"></script>
     <script type="text/javascript">
       // 비-Chromium 브라우저 안내. UA 검사: Chrome/CriOS 면 OK, Edg/OPR/SamsungBrowser
       // 같은 Chromium 변형도 OK 처리 (love.js 호환성 비슷). Firefox/Safari/iOS Safari 만 안내.
@@ -922,11 +922,11 @@
         } catch (e) {}
       })();
     </script>
-    <script type="text/javascript" src="save_controls.js?v=20260529202955"></script>
+    <script type="text/javascript" src="save_controls.js?v=20260530105601"></script>
     <!-- [CARD] Firebase 랭킹/머니 + 사용자 모달. love.js 보다 먼저 로드되어
          window.__moneyReady(Promise) 를 미리 생성 → preRunInjectMoney 가 대기. -->
-    <script type="text/javascript" src="firebase.js?v=20260529202955"></script>
-    <script type="text/javascript" src="game.js?v=20260529202955"></script>
-    <script async type="text/javascript" src="love.js?v=20260529202955" onload="applicationLoad(this)"></script>
+    <script type="text/javascript" src="firebase.js?v=20260530105601"></script>
+    <script type="text/javascript" src="game.js?v=20260530105601"></script>
+    <script async type="text/javascript" src="love.js?v=20260530105601" onload="applicationLoad(this)"></script>
   </body>
 </html>
