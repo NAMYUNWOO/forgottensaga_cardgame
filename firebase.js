@@ -1,33 +1,36 @@
 // cardgame/web/firebase.js — 포가튼사가 카드게임 웹: Firebase 랭킹 + 머니 동기화.
 //
-// - 첫 접속: IndexedDB 에 playerId 있으면 Firebase 머니 불러와 바로 이어서 플레이.
-//            없으면 이름 등록 모달 → Firebase 등록(중복 시 뒤에 번호).
-// - 게임머니(Lua Game.gold) 변화: index.html Module.print 의 [GOLD] 핸들러가
-//   FosaCard.onGoldChanged(money) 호출 → Firebase PUT + 표시 갱신.
-// - 3초마다 Firebase 폴링 → 랭킹 1~19위 + 내 순위.
+// 보안(A안): 익명 인증(Anonymous Auth) + 본인 레코드만 쓰기.
+//   - 부팅 시 Identity Toolkit REST 로 익명 토큰 발급(최초) 또는 refreshToken 으로 갱신.
+//   - 사용자 레코드 key = 익명 uid. 모든 쓰기 요청에 ?auth=<idToken> 부착.
+//   - RTDB 규칙: /users 읽기 공개, /users/$uid 쓰기는 auth.uid===$uid 만 허용.
+//   → 남의 레코드/전체 삭제·조작 불가. (단 본인 점수 위조는 A로는 못 막음 — B 필요)
 //
-// love.js 부팅은 preRunInjectMoney 가 window.__moneyReady(Promise) 를 대기 →
-// 모달/IndexedDB 로 머니 확정 후 resolve.
+// 동작: [GOLD] → onGoldChanged(머니 PUT), [RESULT] → onResult(승/패 누적).
+//       3초 폴링 랭킹(1~19 + 내 순위), 배팅0(승+패=0) 유저 제외.
 (function () {
   'use strict';
 
   var DB = 'https://fosacard-default-rtdb.asia-southeast1.firebasedatabase.app';
+  // Firebase 웹 API 키 (콘솔 → 프로젝트 설정 → 일반 → 웹 API 키). 익명 인증용.
+  var API_KEY = 'AIzaSyBz9_cnBhRYHCRxxlSYCCtOZ1vsJW4C6ww';
   var DEFAULT_MONEY = 10000;
   var IDB_NAME = 'fosacard_player';
   var IDB_STORE = 'kv';
-  var IDB_KEY = 'playerId';
   var MONEY_CAP = 99999999;
 
-  var playerId = null;
+  var auth = { uid: null, idToken: null, refreshToken: null };
+  var playerId = null;   // = auth.uid
   var playerName = null;
   var myMoney = DEFAULT_MONEY;
   var lastPutMoney = null;
+  var myWins = 0;
+  var myLosses = 0;
 
-  // love.js preRunInjectMoney 가 기다리는 Promise
   var _resolveMoney;
   window.__moneyReady = new Promise(function (res) { _resolveMoney = res; });
 
-  // ───────────── IndexedDB (playerId 영속) ─────────────
+  // ───────────── IndexedDB (uid + refreshToken 영속) ─────────────
   function idbOpen() {
     return new Promise(function (resolve, reject) {
       var req = indexedDB.open(IDB_NAME, 1);
@@ -43,8 +46,7 @@
     return idbOpen().then(function (db) {
       return new Promise(function (resolve) {
         try {
-          var tx = db.transaction([IDB_STORE], 'readonly');
-          var r = tx.objectStore(IDB_STORE).get(key);
+          var r = db.transaction([IDB_STORE], 'readonly').objectStore(IDB_STORE).get(key);
           r.onsuccess = function () { resolve(r.result); };
           r.onerror = function () { resolve(null); };
         } catch (e) { resolve(null); }
@@ -64,39 +66,82 @@
     }).catch(function () { return false; });
   }
 
-  // ───────────── Firebase RTDB REST ─────────────
-  function getJson(path) {
-    return fetch(DB + path + '.json', { cache: 'no-store' })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .catch(function () { return null; });
-  }
-  function putJson(path, body) {
-    return fetch(DB + path + '.json', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
-  }
-  function postJson(path, body) {
-    return fetch(DB + path + '.json', {
+  // ───────────── 익명 인증 (Identity Toolkit / SecureToken REST) ─────────────
+  function anonSignUp() {
+    return fetch('https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=' + API_KEY, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+      body: JSON.stringify({ returnSecureToken: true })
+    }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      if (!d || !d.idToken) return false;
+      auth.uid = d.localId; auth.idToken = d.idToken; auth.refreshToken = d.refreshToken;
+      return idbPut('uid', auth.uid).then(function () {
+        return idbPut('refreshToken', auth.refreshToken);
+      }).then(function () { return true; });
+    }).catch(function () { return false; });
+  }
+  function refreshIdToken() {
+    if (!auth.refreshToken) return Promise.resolve(false);
+    return fetch('https://securetoken.googleapis.com/v1/token?key=' + API_KEY, {
+      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(auth.refreshToken)
+    }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      if (!d || !d.id_token) return false;
+      auth.uid = d.user_id; auth.idToken = d.id_token;
+      if (d.refresh_token) { auth.refreshToken = d.refresh_token; idbPut('refreshToken', auth.refreshToken); }
+      return true;
+    }).catch(function () { return false; });
+  }
+  // 저장된 uid+refreshToken 으로 세션 복원, 없으면 새 익명 가입.
+  function ensureAuth() {
+    return Promise.all([idbGet('uid'), idbGet('refreshToken')]).then(function (vals) {
+      var uid = vals[0], rt = vals[1];
+      if (uid && rt) {
+        auth.uid = uid; auth.refreshToken = rt;
+        return refreshIdToken().then(function (ok) { return ok ? true : anonSignUp(); });
+      }
+      return anonSignUp();
+    });
   }
 
-  // ───────────── 사용자 등록 (중복 시 뒤에 번호) ─────────────
+  // ───────────── RTDB REST (읽기 공개 / 쓰기 ?auth) ─────────────
+  function getJson(path) {
+    return fetch(DB + path + '.json', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+  }
+  // 쓰기 — ?auth=idToken 부착. 401(토큰 만료) 시 refresh 후 1회 재시도.
+  function writeJson(path, body, method) {
+    method = method || 'PUT';
+    function go() {
+      var url = DB + path + '.json' + (auth.idToken ? ('?auth=' + auth.idToken) : '');
+      return fetch(url, { method: method, headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body) });
+    }
+    return go().then(function (r) {
+      if ((r.status === 401 || r.status === 403) && auth.refreshToken) {
+        return refreshIdToken().then(function (ok) { return ok ? go() : r; });
+      }
+      return r;
+    }).then(function (r) { return (r && r.ok) ? r.json().catch(function () { return null; }) : null; })
+      .catch(function () { return null; });
+  }
+
+  // ───────────── 사용자 등록 (key=uid, 이름 중복 시 번호) ─────────────
   function registerUser(rawName) {
     var name = (rawName || '').trim().slice(0, 8);
     if (!name) return Promise.reject(new Error('empty'));
+    if (!auth.uid) return Promise.reject(new Error('no-auth'));
     return getJson('/users').then(function (users) {
       var taken = {};
-      if (users) for (var k in users) { if (users[k] && users[k].name) taken[users[k].name] = true; }
+      if (users) for (var k in users) {
+        if (k !== auth.uid && users[k] && users[k].name) taken[users[k].name] = true;
+      }
       var finalName = name, n = 2;
       while (taken[finalName]) { finalName = name + n; n++; }
-      return postJson('/users', {
-        name: finalName, money: DEFAULT_MONEY, created: Date.now()
+      return writeJson('/users/' + auth.uid, {
+        name: finalName, money: DEFAULT_MONEY, wins: 0, losses: 0, created: Date.now()
       }).then(function (res) {
-        if (!res || !res.name) throw new Error('register failed');
-        return { id: res.name, name: finalName };
+        if (res === null) throw new Error('register failed');
+        return { id: auth.uid, name: finalName };
       });
     });
   }
@@ -107,9 +152,7 @@
     var input = document.getElementById('cg-name-input');
     var ok = document.getElementById('cg-name-ok');
     var msg = document.getElementById('cg-name-msg');
-    if (!modal) { // 모달 DOM 없으면 fallback (이름 없이 시작)
-      finishNewUser('Player'); return;
-    }
+    if (!modal) { finishNewUser('Player'); return; }
     modal.classList.remove('hidden');
     setTimeout(function () { try { input.focus(); } catch (e) {} }, 100);
 
@@ -121,10 +164,8 @@
       busy = true; ok.disabled = true; msg.textContent = '등록 중...';
       registerUser(name).then(function (u) {
         playerId = u.id; playerName = u.name;
-        return idbPut(IDB_KEY, playerId).then(function () {
-          modal.classList.add('hidden');
-          finishNewUser(u.name);
-        });
+        modal.classList.add('hidden');
+        finishNewUser(u.name);
       }).catch(function () {
         busy = false; ok.disabled = false; msg.textContent = '등록 실패 — 다시 시도하세요';
       });
@@ -137,8 +178,7 @@
 
   function finishNewUser(name) {
     playerName = name || playerName || 'Player';
-    myMoney = DEFAULT_MONEY;
-    lastPutMoney = DEFAULT_MONEY;
+    myMoney = DEFAULT_MONEY; lastPutMoney = DEFAULT_MONEY;
     _resolveMoney(DEFAULT_MONEY);
     startRankingPoll();
   }
@@ -149,56 +189,64 @@
     startRankingPoll();
   }
 
-  // ───────────── 랭킹 패널 토글 (X 닫기 / 🏆 열기) ─────────────
+  // ───────────── 랭킹 패널 토글 ─────────────
   function setupRankingToggle() {
     var panel = document.getElementById('cg-ranking');
     var closeBtn = document.getElementById('cg-rank-close');
     var openBtn = document.getElementById('cg-rank-open');
     if (!panel) return;
     if (closeBtn) closeBtn.addEventListener('click', function () {
-      panel.classList.add('hidden');
-      if (openBtn) openBtn.classList.remove('hidden');
+      panel.classList.add('hidden'); if (openBtn) openBtn.classList.remove('hidden');
     });
     if (openBtn) openBtn.addEventListener('click', function () {
-      panel.classList.remove('hidden');
-      openBtn.classList.add('hidden');
+      panel.classList.remove('hidden'); openBtn.classList.add('hidden');
     });
   }
 
   // ───────────── 부트 ─────────────
   function boot() {
     setupRankingToggle();
-    idbGet(IDB_KEY).then(function (pid) {
-      if (pid) {
-        playerId = pid;
-        getJson('/users/' + pid).then(function (u) {
-          if (u && typeof u.money === 'number') {
-            playerName = u.name || 'Player';
-            finishReturning(u.money);
-          } else {
-            // 손상/삭제된 레코드 → 머니 10000 으로 복구 PUT
-            playerName = (u && u.name) || 'Player';
-            putJson('/users/' + pid, { name: playerName, money: DEFAULT_MONEY, created: Date.now() });
-            finishReturning(DEFAULT_MONEY);
-          }
-        });
-      } else {
-        showModal();
+    ensureAuth().then(function (okAuth) {
+      if (!okAuth || !auth.uid) {
+        console.warn('[CARD] 익명 인증 실패 — Firebase 익명 로그인 설정/API키 확인 필요');
+        // 인증 실패해도 게임은 진행 (랭킹 쓰기만 안 됨)
+        finishNewUser(playerName || 'Player');
+        return;
       }
+      playerId = auth.uid;
+      getJson('/users/' + auth.uid).then(function (u) {
+        if (u && typeof u.money === 'number') {     // 복귀 사용자
+          playerName = u.name || 'Player';
+          myWins = u.wins || 0; myLosses = u.losses || 0;
+          finishReturning(u.money);
+        } else {                                    // 새 익명 사용자 → 이름 등록
+          showModal();
+        }
+      });
     });
   }
 
-  // ───────────── 머니 변화 (Lua → [GOLD] → 여기) ─────────────
+  // ───────────── 머니 변화 ─────────────
   function onGoldChanged(money) {
     if (typeof money !== 'number' || money < 0) return;
     if (money > MONEY_CAP) money = MONEY_CAP;
     myMoney = money;
-    updateMyDisplay();
     if (playerId && money !== lastPutMoney) {
       lastPutMoney = money;
-      putJson('/users/' + playerId + '/money', money);
+      writeJson('/users/' + playerId + '/money', money);
     }
-    renderRankingFromCache(); // 내 순위 즉시 반영 (캐시 기반)
+    renderRankingFromCache();
+  }
+
+  // ───────────── 라운드 결과 승/패 ─────────────
+  function onResult(outcome) {
+    if (!playerId) return;
+    if (outcome === 'win') {
+      myWins += 1; writeJson('/users/' + playerId + '/wins', myWins);
+    } else if (outcome === 'loss') {
+      myLosses += 1; writeJson('/users/' + playerId + '/losses', myLosses);
+    }
+    renderRankingFromCache();
   }
 
   // ───────────── 랭킹 (3초 폴링) ─────────────
@@ -216,9 +264,10 @@
       for (var id in users) {
         var u = users[id];
         if (!u) continue;
-        arr.push({ id: id, name: u.name || '?', money: (typeof u.money === 'number') ? u.money : 0 });
+        arr.push({ id: id, name: u.name || '?',
+          money: (typeof u.money === 'number') ? u.money : 0,
+          wins: u.wins || 0, losses: u.losses || 0 });
       }
-      arr.sort(function (a, b) { return b.money - a.money; });
       _rankCache = arr;
       renderRankingFromCache();
     });
@@ -227,15 +276,15 @@
     var listEl = document.getElementById('cg-rank-list');
     var meEl = document.getElementById('cg-me');
     if (!listEl) return;
-    var arr = _rankCache;
-    // 내 순위/머니는 캐시 + 실시간 myMoney 반영
-    var myIdx = -1;
-    for (var i = 0; i < arr.length; i++) {
-      if (arr[i].id === playerId) { myIdx = i; arr[i].money = myMoney; break; }
-    }
-    // myMoney 반영 후 재정렬 (내 위치 갱신)
+    var arr = _rankCache.map(function (u) {
+      if (u.id === playerId) {
+        return { id: u.id, name: playerName || u.name, money: myMoney, wins: myWins, losses: myLosses };
+      }
+      return u;
+    });
+    arr = arr.filter(function (u) { return ((u.wins || 0) + (u.losses || 0)) > 0; });
     arr.sort(function (a, b) { return b.money - a.money; });
-    myIdx = -1;
+    var myIdx = -1;
     for (var j = 0; j < arr.length; j++) { if (arr[j].id === playerId) { myIdx = j; break; } }
 
     var html = '';
@@ -250,10 +299,10 @@
     listEl.innerHTML = html;
     if (meEl) {
       var rankTxt = (myIdx >= 0) ? (myIdx + 1) + '위' : '-위';
-      meEl.textContent = (playerName || '나') + ' · ' + fmt(myMoney) + ' · ' + rankTxt;
+      meEl.textContent = (playerName || '나') + ' · ' + fmt(myMoney) + ' · ' + rankTxt +
+        ' · ' + myWins + '승 ' + myLosses + '패';
     }
   }
-  function updateMyDisplay() { renderRankingFromCache(); }
 
   function fmt(n) { return (n | 0).toLocaleString('en-US'); }
   function escapeHtml(s) {
@@ -266,6 +315,7 @@
   window.FosaCard = {
     DEFAULT_MONEY: DEFAULT_MONEY,
     onGoldChanged: onGoldChanged,
+    onResult: onResult,
     getPlayerId: function () { return playerId; }
   };
   if (document.readyState === 'loading') {
